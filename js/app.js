@@ -262,12 +262,24 @@ async function findImages() {
             .substring(root.length + 1)
             .split("/")[0],
 
-        url:
+   /*     url:
           `https://raw.githubusercontent.com/` +
           `${CONFIG.OWNER}/` +
           `${CONFIG.REPO}/` +
           `${CONFIG.BRANCH}/` +
-          item.path
+          item.path */
+
+url:
+  `https://raw.githubusercontent.com/` +
+  `${CONFIG.OWNER}/` +
+  `${CONFIG.REPO}/` +
+  `${CONFIG.BRANCH}/` +
+  item.path
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")
+
+        
       };
 
     });
