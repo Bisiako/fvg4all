@@ -158,6 +158,7 @@ Prima di utilizzare, modificare o ridistribuire una locandina è necessario veri
 Un progetto per raccogliere, organizzare e rendere più facilmente scopribili gli eventi del nostro territorio.
 
 **Friuli Venezia Giulia → eventi → persone → territorio.**
+
 ## 🔗 Link al sito
 👉 [BLOG](Visita https://bisiako.github.io/fvg4all/)
 
