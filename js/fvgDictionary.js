@@ -307,7 +307,7 @@ fvgNormalizeWord(word);
 
 for (const categoria of Object.values(FVG_DICTIONARY)) {
 
-```
+
 if (
   categoria.some(
     voce =>
@@ -318,7 +318,7 @@ if (
   return true;
 
 }
-```
+
 
 }
 
@@ -340,7 +340,7 @@ const [categoria, valori]
 of Object.entries(FVG_DICTIONARY)
 ) {
 
-```
+
 if (
   valori.some(
     voce =>
@@ -351,7 +351,7 @@ if (
   return categoria;
 
 }
-```
+
 
 }
 
@@ -391,7 +391,6 @@ fvgGetCategory(word);
 
 switch (category) {
 
-```
 case "eventi":
   return 10;
 
@@ -418,7 +417,6 @@ case "regione":
 
 default:
   return 0;
-```
 
 }
 
@@ -440,7 +438,7 @@ let paroleRiconosciute = 0;
 
 for (const parola of parole) {
 
-```
+
 const corrected =
   fvgCorrectOCR(parola);
 
@@ -452,20 +450,20 @@ score += wordScore;
 if (wordScore > 0) {
   paroleRiconosciute++;
 }
-```
+
 
 }
 
 return {
 
-```
+
 line: line,
 
 score: score,
 
 paroleRiconosciute:
   paroleRiconosciute
-```
+
 
 };
 
@@ -479,7 +477,7 @@ paroleRiconosciute:
 
 return String(text)
 
-```
+
 .split(/\b/)
 
 .map(parte => {
@@ -497,6 +495,5 @@ return String(text)
 })
 
 .join("");
-```
 
 }
