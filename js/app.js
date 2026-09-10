@@ -24,7 +24,7 @@ const CONFIG = {
 
   // Percorso nel repository.
   // Se le immagini sono realmente in main/images/, lascia così.
-  IMAGE_ROOT: "main/images",
+  IMAGE_ROOT: "images",
 
   // Lingua OCR.
   OCR_LANGUAGE: "ita",
