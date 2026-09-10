@@ -107,7 +107,7 @@ async function init() {
  * Per repository pubblici non è necessario un token.
  */
 
-async function findImages() {
+/* async function findImages() {
 
   const url =
     `${CONFIG.API_URL}/repos/${encodeURIComponent(CONFIG.OWNER)}/` +
@@ -201,8 +201,71 @@ async function findImages() {
       );
 
     });
-}
+} */
 
+/* TEST A */
+async function findImages() {
+
+  const url =
+    `${CONFIG.API_URL}/repos/${CONFIG.OWNER}/${CONFIG.REPO}` +
+    `/git/trees/${CONFIG.BRANCH}?recursive=1`;
+
+  console.log("GitHub API URL:", url);
+
+  const response = await fetch(url);
+
+  console.log("GitHub HTTP status:", response.status);
+
+  if (!response.ok) {
+    throw new Error(
+      `GitHub API HTTP ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+
+  console.log("GitHub tree:", data);
+
+  const root = CONFIG.IMAGE_ROOT.replace(
+    /^\/+|\/+$/g,
+    ""
+  );
+
+  const images = data.tree
+    .filter(item => item.type === "blob")
+    .filter(item =>
+      item.path.startsWith(root + "/")
+    )
+    .filter(item =>
+      /\.(png|jpg|jpeg|webp|gif)$/i.test(item.path)
+    )
+    .map(item => {
+
+      return {
+        name: item.path.split("/").pop(),
+
+        path: item.path,
+
+        folder:
+          item.path
+            .substring(root.length + 1)
+            .split("/")[0],
+
+        url:
+          `https://raw.githubusercontent.com/` +
+          `${CONFIG.OWNER}/` +
+          `${CONFIG.REPO}/` +
+          `${CONFIG.BRANCH}/` +
+          item.path
+      };
+
+    });
+
+  console.log("IMMAGINI TROVATE:", images);
+
+  return images;
+}
+/* TEST A EOF */
 
 function normalizePath(path) {
 
