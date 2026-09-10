@@ -179,6 +179,17 @@ async function init() {
           `${CONFIG.REPO}/` +
           `${CONFIG.BRANCH}/` +
           `${encodeURI(path)}`
+
+        url:
+          `https://raw.githubusercontent.com/` +
+          `${CONFIG.OWNER}/` +
+          `${CONFIG.REPO}/` +
+          `${CONFIG.BRANCH}/` +
+          item.path
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/")
+          
       };
 
     })
