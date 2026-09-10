@@ -107,7 +107,7 @@ async function init() {
  * Per repository pubblici non è necessario un token.
  */
 
-/* async function findImages() {
+ async function findImages() {
 
   const url =
     `${CONFIG.API_URL}/repos/${encodeURIComponent(CONFIG.OWNER)}/` +
@@ -212,9 +212,10 @@ async function init() {
       );
 
     });
-} */
+} 
 
 /* TEST A */
+/*
 async function findImages() {
 
   const url =
@@ -287,7 +288,7 @@ url:
   console.log("IMMAGINI TROVATE:", images);
 
   return images;
-}
+} */
 /* TEST A EOF */
 
 function normalizePath(path) {
