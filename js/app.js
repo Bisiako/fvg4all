@@ -459,10 +459,44 @@ async function processOCRSequentially(images) {
         );
 
 
-      const text =
+    /*  const text =
         cleanOCR(
           result.data.text
-        );
+        ); */
+/*
+ * TESTO OCR ORIGINALE
+ */
+const ocrOriginal =
+  result.data.text;
+
+
+/*
+ * Pulizia generale.
+ */
+let text =
+  cleanOCR(
+    ocrOriginal
+  );
+
+
+/*
+ * Correzione specifica FVG.
+ */
+text =
+  fvgCorrectOCRText(
+    text
+  );
+
+
+console.log(
+  "OCR originale:",
+  ocrOriginal
+);
+
+console.log(
+  "OCR elaborato:",
+  text
+);
 
 
       const info =
