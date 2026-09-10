@@ -902,16 +902,24 @@ function findTitle(
           !/^https?:\/\//i.test(line)
       )
 
-      .map(
-        line => ({
+.map(
+  line => {
 
-          line,
+    const fvg =
+      fvgAnalyzeLine(line);
 
-          score:
-            titleScore(line)
+    return {
 
-        })
-      )
+      line: line,
+
+      score:
+        titleScore(line) +
+        fvg.score
+
+    };
+
+  }
+)
 
       .sort(
         (a, b) =>
