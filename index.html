@@ -1,62 +1,57 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Archivio fotografico — lettura automatica</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="fvg4all - Locandine, eventi e sagre del Friuli Venezia Giulia">
+  <title>fvg4all — Eventi e Sagre del Friuli Venezia Giulia</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Tesseract.js: OCR direttamente nel browser -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
+
 <body>
-
-<header class="topbar">
-  <h1 class="topbar__title">Archivio<span class="topbar__title-accent">.</span></h1>
-  <p class="topbar__subtitle">Ogni cartella un mese, ogni immagine la sua trascrizione</p>
-</header>
-
-<div class="layout">
-
-  <!-- Colonna mesi, stile schedario -->
-  <nav class="months" id="months" aria-label="Seleziona mese">
-    <p class="months__hint">Caricamento mesi…</p>
-  </nav>
-
-  <main class="stage">
-
-    <div class="stage__bar">
-      <div class="stage__info">
-        <span class="stage__month" id="current-month">—</span>
-        <span class="stage__count" id="current-count"></span>
-      </div>
-      <div class="view-toggle" role="group" aria-label="Modalità di visualizzazione">
-        <button type="button" class="view-toggle__btn is-active" data-view="grid">Riquadri</button>
-        <button type="button" class="view-toggle__btn" data-view="carousel">Carosello</button>
-      </div>
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark">fvg</span><span class="brand-number">4</span><span class="brand-name">all</span>
     </div>
+    <div>
+      <h1>Eventi e Sagre del Friuli Venezia Giulia</h1>
+      <p>Le locandine vengono lette automaticamente: basta caricarle su GitHub.</p>
+    </div>
+  </header>
 
-    <!-- Vista a riquadri (contact sheet) -->
-    <section class="grid" id="grid-view" aria-live="polite"></section>
+  <main>
+    <section class="toolbar">
+      <div>
+        <strong id="imageCount">0</strong> locandine trovate
+      </div>
 
-    <!-- Vista a carosello -->
-    <section class="carousel" id="carousel-view" hidden>
-      <button type="button" class="carousel__nav carousel__nav--prev" id="carousel-prev" aria-label="Immagine precedente">‹</button>
-      <div class="carousel__frame" id="carousel-frame"></div>
-      <button type="button" class="carousel__nav carousel__nav--next" id="carousel-next" aria-label="Immagine successiva">›</button>
-      <div class="carousel__index" id="carousel-index"></div>
+      <div class="toolbar-actions">
+        <button id="gridButton" class="active" type="button">▦ Riquadri</button>
+        <button id="carouselButton" type="button">◀ Carosello ▶</button>
+      </div>
     </section>
 
-    <p class="stage__empty" id="empty-state" hidden>Nessuna immagine trovata in questo mese.</p>
+    <section id="status" class="status">
+      Ricerca delle locandine su GitHub…
+    </section>
 
+    <section id="gallery" class="gallery" aria-live="polite"></section>
+
+    <section id="carousel" class="carousel hidden" aria-label="Carosello locandine">
+      <button id="prevButton" class="carousel-arrow" type="button" aria-label="Immagine precedente">‹</button>
+      <div id="carouselContent" class="carousel-content"></div>
+      <button id="nextButton" class="carousel-arrow" type="button" aria-label="Immagine successiva">›</button>
+    </section>
   </main>
-</div>
 
-<footer class="footer">
-  <p>Il testo sotto ogni immagine è generato in automatico via OCR nel browser e potrebbe contenere imprecisioni.</p>
-</footer>
+  <footer>
+    <p>fvg4all · Locandine ed eventi del Friuli Venezia Giulia</p>
+  </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
-<script src="js/app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
