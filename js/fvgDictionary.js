@@ -239,6 +239,104 @@ return String(word)
 .trim();
 }
 /*
+ * ============================================================
+ * CONFRONTO FUZZY PER OCR
+ * ============================================================
+ */
+
+/*
+ * Normalizza gli errori tipici di Tesseract
+ * solamente per il confronto.
+ */
+function fvgNormalizeOCRForComparison(word) {
+
+    return String(word)
+        .toUpperCase()
+        .trim()
+        .replace(/0/g, "O")
+        .replace(/1/g, "I")
+        .replace(/5/g, "S")
+        .replace(/8/g, "B");
+}
+
+
+/*
+ * Distanza di Levenshtein.
+ *
+ * Conta quante modifiche servono per trasformare
+ * una parola nell'altra.
+ */
+function fvgLevenshtein(a, b) {
+
+    a = String(a);
+    b = String(b);
+
+    const matrix = [];
+
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= b.length; i++) {
+
+        for (let j = 1; j <= a.length; j++) {
+
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+
+                matrix[i][j] =
+                    matrix[i - 1][j - 1];
+
+            } else {
+
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j - 1] + 1
+                );
+            }
+        }
+    }
+
+    return matrix[b.length][a.length];
+}
+
+
+/*
+ * Restituisce un valore da 0 a 1.
+ *
+ * 1 = parole identiche
+ * 0 = parole completamente diverse
+ */
+function fvgSimilarity(a, b) {
+
+    const wordA =
+        fvgNormalizeOCRForComparison(a);
+
+    const wordB =
+        fvgNormalizeOCRForComparison(b);
+
+    if (!wordA || !wordB) {
+        return 0;
+    }
+
+    if (wordA === wordB) {
+        return 1;
+    }
+
+    const distance =
+        fvgLevenshtein(wordA, wordB);
+
+    const maxLength =
+        Math.max(wordA.length, wordB.length);
+
+    return 1 - (distance / maxLength);
+}
+
+/*
 * Cerca una parola nel dizionario.
 */
 function fvgIsKnownWord(word) {
@@ -292,6 +390,135 @@ FVG_OCR_CORRECTIONS[key]
 || word
 );
 
+}
+
+/*
+ * ============================================================
+ * CORREZIONE OCR FUZZY
+ * ============================================================
+ *
+ * Cerca la parola del dizionario più simile alla parola
+ * prodotta da Tesseract.
+ *
+ * Esempi:
+ *
+ * SAGRRA      -> Sagra
+ * C0RM0NS     -> Cormons
+ * MONFALC0NE  -> Monfalcone
+ * G0RIZIA     -> Gorizia
+ *
+ * Se la somiglianza è troppo bassa, la parola originale
+ * viene lasciata invariata.
+ * ============================================================
+ */
+function fvgCorrectOCRWord(word) {
+
+    const original =
+        String(word).trim();
+
+    if (!original) {
+        return original;
+    }
+
+
+    /*
+     * Prima proviamo le correzioni manuali.
+     */
+    const manualCorrection =
+        fvgCorrectOCR(original);
+
+    if (manualCorrection !== original) {
+        return manualCorrection;
+    }
+
+
+    /*
+     * Parola normalizzata per il confronto.
+     */
+    const normalizedOCR =
+        fvgNormalizeOCRForComparison(original);
+
+
+    let bestWord = original;
+    let bestScore = 0;
+    let bestCategory = "";
+
+
+    /*
+     * Cerca la parola più simile in tutto il dizionario.
+     */
+    for (const [category, words]
+        of Object.entries(FVG_DICTIONARY)) {
+
+        for (const dictionaryWord of words) {
+
+            const similarity =
+                fvgSimilarity(
+                    normalizedOCR,
+                    dictionaryWord
+                );
+
+
+            if (similarity > bestScore) {
+
+                bestScore = similarity;
+                bestWord = dictionaryWord;
+                bestCategory = category;
+            }
+        }
+    }
+
+
+    /*
+     * Soglia di sicurezza.
+     *
+     * Le parole corte richiedono maggiore precisione.
+     */
+    let threshold;
+
+    if (normalizedOCR.length <= 3) {
+
+        threshold = 0.90;
+
+    } else if (normalizedOCR.length <= 5) {
+
+        threshold = 0.82;
+
+    } else if (normalizedOCR.length <= 8) {
+
+        threshold = 0.78;
+
+    } else {
+
+        threshold = 0.75;
+    }
+
+
+    /*
+     * Corregge solamente se la somiglianza
+     * supera la soglia.
+     */
+    if (bestScore >= threshold) {
+
+        console.log(
+            "[FVG OCR]",
+            original,
+            "→",
+            bestWord,
+            "|",
+            (bestScore * 100).toFixed(1) + "%",
+            "|",
+            bestCategory
+        );
+
+        return bestWord;
+    }
+
+
+    /*
+     * Nessuna correzione sufficientemente sicura.
+     */
+    return original;
 }
 
 /*
@@ -373,7 +600,8 @@ return String(text)
   if (
     /^[a-zA-ZÀ-ÖØ-öø-ÿ]+$/.test(parte)
   ) {
-    return fvgCorrectOCR(parte);
+   //return fvgCorrectOCR(parte);
+   return fvgCorrectOCRWord(parte);
   }
   return parte;
 })
