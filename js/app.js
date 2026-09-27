@@ -456,6 +456,12 @@ async function processOCRSequentially(images) {
           image.url
         );
 
+      console.debug(
+        "Florence-2 · testo ricostruito dalle region:",
+        image.name,
+        ocrOriginal
+      );
+
 
 /*
  * Pulizia generale.
@@ -628,8 +634,7 @@ function ensureFlorenceEngine() {
 
       const {
         Florence2ForConditionalGeneration,
-        AutoProcessor,
-        AutoTokenizer
+        AutoProcessor
       } = await loadTransformersModule();
 
       const modelId = CONFIG.OCR_MODEL_ID;
@@ -688,10 +693,7 @@ function ensureFlorenceEngine() {
       const processor =
         await AutoProcessor.from_pretrained(modelId);
 
-      const tokenizer =
-        await AutoTokenizer.from_pretrained(modelId);
-
-      return { model, processor, tokenizer };
+      return { model, processor };
 
     })();
 
@@ -703,28 +705,32 @@ function ensureFlorenceEngine() {
 
 async function recognizeWithFlorence(imageUrl) {
 
-  const { RawImage } = await loadTransformersModule();
+  const { load_image } = await loadTransformersModule();
 
-  const { model, processor, tokenizer } =
+  const { model, processor } =
     await ensureFlorenceEngine();
 
-  const image = await RawImage.fromURL(imageUrl);
+  const image = await load_image(imageUrl);
 
   const task = CONFIG.OCR_TASK;
 
-  const textInputs = tokenizer(task);
-  const visionInputs = await processor(image);
+  const prompts = processor.construct_prompts(task);
+  const inputs = await processor(image, prompts);
 
   const generatedIds = await model.generate({
-    ...textInputs,
-    ...visionInputs,
+    ...inputs,
     max_new_tokens: 512
   });
 
   const generatedText =
-    tokenizer.batch_decode(generatedIds, {
+    processor.batch_decode(generatedIds, {
       skip_special_tokens: false
     })[0];
+
+  console.debug(
+    "Florence-2 · testo grezzo generato:",
+    generatedText
+  );
 
   const parsed =
     processor.post_process_generation(
@@ -732,6 +738,11 @@ async function recognizeWithFlorence(imageUrl) {
       task,
       image.size
     );
+
+  console.debug(
+    "Florence-2 · risultato post-process:",
+    parsed
+  );
 
   return regionResultToText(parsed[task]);
 
