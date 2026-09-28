@@ -1,22 +1,3 @@
-/*
- * fvg4all
- * ------------------------------------------------------------
- * Non è necessario rinominare le immagini.
- * Non è necessario creare un file JSON.
- * Non è necessario scrivere manualmente titolo/data/descrizione.
- *
- * Il programma:
- * 1. interroga GitHub API;
- * 2. cerca ricorsivamente sotto IMAGE_ROOT;
- * 3. trova PNG/JPG/JPEG/WebP/GIF;
- * 4. mostra le immagini;
- * 5. usa Tesseract.js per estrarre il testo;
- * 6. prova automaticamente a riconoscere titolo e data dell'evento.
- *
- * IMPORTANTE:
- * Impostare OWNER e REPO con il proprio repository GitHub.
- */
-
 const CONFIG = {
   OWNER: "Bisiako",
   REPO: "fvg4all",
@@ -57,6 +38,25 @@ const CONFIG = {
     vision_encoder: "fp32",
     encoder_model: "q8",
     decoder_model_merged: "q8"
+  },
+
+  // Preset di DIAGNOSTICA, selezionabili dall'URL della pagina:
+  //   ?ocr=fp32            tutto a precisione piena (baseline, ~1 GB)
+  //   ?ocr=fp16            tutto fp16 (solo WebGPU)
+  //   ?ocr=demo            combinazione della demo ufficiale HF
+  //   ?ocr=q8              q8 uniforme
+  //   &device=wasm|webgpu  forza il backend di calcolo
+  // Esempio: index.html?ocr=fp32&device=wasm
+  OCR_PRESETS: {
+    fp32: "fp32",
+    fp16: "fp16",
+    q8: "q8",
+    demo: {
+      embed_tokens: "fp16",
+      vision_encoder: "fp16",
+      encoder_model: "q4",
+      decoder_model_merged: "q4"
+    }
   },
 
   // Versione di @huggingface/transformers caricata da jsDelivr.
@@ -675,35 +675,72 @@ function ensureFlorenceEngine() {
 
       };
 
-      let model;
+      // Parametri opzionali da URL per la diagnostica.
+      const params = new URLSearchParams(window.location.search);
+      const presetName = params.get("ocr");
+      const forcedDevice = params.get("device");
 
-      try {
+      const preset =
+        presetName && CONFIG.OCR_PRESETS[presetName]
+          ? CONFIG.OCR_PRESETS[presetName]
+          : null;
 
-        model =
-          await Florence2ForConditionalGeneration.from_pretrained(
-            modelId,
-            {
-              dtype: CONFIG.OCR_DTYPE_WEBGPU,
-              device: "webgpu",
-              progress_callback: reportProgress
-            }
-          );
+      const loadModel = async device => {
 
-      } catch (webgpuError) {
+        const dtype =
+          preset ||
+          (device === "webgpu"
+            ? CONFIG.OCR_DTYPE_WEBGPU
+            : CONFIG.OCR_DTYPE_WASM);
 
-        console.warn(
-          "WebGPU non disponibile, uso il fallback WASM:",
-          webgpuError
+        console.log(
+          "Florence-2 · configurazione modello → device:",
+          device,
+          "| dtype:",
+          dtype,
+          "| preset URL:",
+          presetName || "(nessuno)"
         );
 
-        model =
-          await Florence2ForConditionalGeneration.from_pretrained(
-            modelId,
-            {
-              dtype: CONFIG.OCR_DTYPE_WASM,
-              progress_callback: reportProgress
-            }
+        const options = {
+          dtype,
+          progress_callback: reportProgress
+        };
+
+        // Per "wasm" non si passa device: è il default di transformers.js.
+        if (device === "webgpu") {
+          options.device = "webgpu";
+        }
+
+        return Florence2ForConditionalGeneration.from_pretrained(
+          modelId,
+          options
+        );
+
+      };
+
+      let model;
+
+      if (forcedDevice === "wasm") {
+
+        model = await loadModel("wasm");
+
+      } else {
+
+        try {
+
+          model = await loadModel("webgpu");
+
+        } catch (webgpuError) {
+
+          console.warn(
+            "WebGPU non disponibile, uso il fallback WASM:",
+            webgpuError
           );
+
+          model = await loadModel("wasm");
+
+        }
 
       }
 
