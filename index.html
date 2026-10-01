@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCR Test Bench — TrOCR vs PaddleOCR</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --text-dim: #8b93a3;
+    --accent: #4f8cff;
+    --ok: #3ecf8e;
+    --err: #ff6b6b;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  header {
+    padding: 28px 32px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    margin: 0 0 6px;
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+  header p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.92rem;
+  }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 32px 60px;
+    display: grid;
+    gap: 20px;
+  }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  section h2 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .drop-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .drop-zone.drag { border-color: var(--accent); color: var(--text); }
+  .drop-zone input { display: none; }
+  #preview-wrap { margin-top: 14px; display: none; gap: 12px; align-items: flex-start; }
+  #preview-wrap.show { display: flex; }
+  #preview {
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    object-fit: contain;
+  }
+  #file-meta { color: var(--text-dim); font-size: 0.85rem; }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  fieldset {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px 14px;
+  }
+  legend { color: var(--text-dim); font-size: 0.8rem; padding: 0 6px; }
+  label.opt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 0.92rem;
+    cursor: pointer;
+  }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 10px 18px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn.secondary {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { color: var(--text-dim); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .02em; }
+  td.mono, .mono { font-family: var(--mono); }
+  .status-ok { color: var(--ok); }
+  .status-err { color: var(--err); }
+  .status-run { color: var(--accent); }
+  .text-cell {
+    max-width: 340px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+  }
+  .empty-row td { color: var(--text-dim); text-align: center; padding: 22px; }
+  .hint { color: var(--text-dim); font-size: 0.82rem; margin-top: 8px; }
+
+  /* galleria GitHub */
+  .gh-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .gh-bar input[type="text"] {
+    flex: 1 1 240px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-family: var(--mono);
+    font-size: 0.88rem;
+  }
+  #gh-status { color: var(--text-dim); font-size: 0.85rem; margin-top: 10px; min-height: 1.3em; }
+  #gh-status.err { color: var(--err); }
+  #gh-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .gh-item {
+    margin: 0;
+    background: var(--panel-2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .gh-item:hover { border-color: var(--text-dim); }
+  .gh-item.selected { border-color: var(--accent); }
+  .gh-item img { display: block; width: 100%; height: 130px; object-fit: cover; background: #000; }
+  .gh-item figcaption {
+    padding: 5px 8px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OCR Test Bench</h1>
+  <p>Confronta TrOCR (Transformers.js) e PaddleOCR / PP-OCR (RapidOCR) su una locandina di evento — CPU only.</p>
+</header>
+
+<main>
+
+  <section>
+    <h2>1. Immagine di test</h2>
+    <div class="drop-zone" id="drop-zone">
+      Trascina qui una locandina (JPG/PNG, fino a 5MB) oppure clicca per scegliere un file
+      <input type="file" id="file-input" accept="image/*">
+    </div>
+    <div id="preview-wrap">
+      <img id="preview" alt="Anteprima immagine">
+      <div id="file-meta"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>1b. Immagini da GitHub Pages</h2>
+    <div class="gh-bar">
+      <input type="text" id="gh-folder" value="images/settembre" spellcheck="false" aria-label="Cartella del repository">
+      <button class="btn secondary" id="gh-load">Carica elenco</button>
+    </div>
+    <div id="gh-status"></div>
+    <div id="gh-grid"></div>
+    <p class="hint">
+      GitHub Pages non permette di elencare una cartella, quindi l'elenco arriva dall'API di GitHub (repo <code>Bisiako/fvg4all</code>, branch <code>main</code>); le immagini si caricano da Pages. Clicca una miniatura per usarla come immagine di test qui sopra. Senza token l'API consente 60 richieste/ora.
+    </p>
+  </section>
+
+  <section>
+    <h2>2. TrOCR — combinazioni da testare</h2>
+    <div class="grid-2">
+      <fieldset>
+        <legend>Modello</legend>
+        <label class="opt"><input type="checkbox" class="trocr-model" value="Xenova/trocr-small-printed" checked> trocr-small-printed</label>
+        <label class="opt"><input type="checkbox" class="trocr-model" value="Xenova/trocr-base-printed"> trocr-base-printed</label>
+      </fieldset>
+      <fieldset>
+        <legend>Quantizzazione (dtype)</legend>
+        <label class="opt"><input type="checkbox" class="trocr-dtype" value="q8" checked> q8 (quantizzato, consigliato mobile)</label>
+        <label class="opt"><input type="checkbox" class="trocr-dtype" value="fp32"> fp32 (precisione piena, più pesante)</label>
+      </fieldset>
+    </div>
+    <fieldset style="margin-top:14px;">
+      <legend>Device</legend>
+      <label class="opt"><input type="checkbox" class="trocr-device" value="wasm" checked> wasm (CPU) — richiesto</label>
+      <label class="opt"><input type="checkbox" class="trocr-device" value="webgpu"> webgpu (GPU) — solo per confronto</label>
+    </fieldset>
+    <div class="actions">
+      <button class="btn" id="run-trocr">Esegui combinazioni TrOCR selezionate</button>
+    </div>
+    <p class="hint">Il primo test per ogni combinazione scarica il modello (una tantum, cache del browser); i successivi sono immediati.</p>
+  </section>
+
+  <section>
+    <h2>3. Florence-2 — OCR su tutta l'immagine (VLM)</h2>
+    <div class="grid-2">
+      <fieldset>
+        <legend>Quantizzazione (dtype)</legend>
+        <label class="opt"><input type="checkbox" class="florence-dtype" value="q8" checked> q8 (consigliato)</label>
+        <label class="opt"><input type="checkbox" class="florence-dtype" value="fp32"> fp32 (più pesante)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Task</legend>
+        <label class="opt"><input type="radio" name="florence-task" value="<OCR>"> &lt;OCR&gt; — solo testo (incollato, senza spazi)</label>
+        <label class="opt"><input type="radio" name="florence-task" value="<OCR_WITH_REGION>" checked> &lt;OCR_WITH_REGION&gt; — testo riordinato per posizione (consigliato)</label>
+      </fieldset>
+    </div>
+    <div class="actions">
+      <button class="btn secondary" id="run-florence">Esegui combinazioni Florence-2 selezionate</button>
+    </div>
+    <p class="hint">
+      Modello <code>onnx-community/Florence-2-base</code>, girato nello stesso worker.js (CPU/wasm). A differenza di TrOCR non serve un passaggio di detection separato: legge da solo tutti i blocchi di testo sparsi nella locandina (titolo, date, luogo). Prima esecuzione più lenta (download modello, alcune centinaia di MB), poi cache del browser.
+    </p>
+  </section>
+
+  <section>
+    <h2>4. RapidOCR / PP-OCR — detection fai-da-te + recognition (sperimentale)</h2>
+    <fieldset>
+      <legend>Dizionario di riconoscimento</legend>
+      <label class="opt"><input type="radio" name="rapid-lang" value="latin" checked> latin (accenti italiani/europei)</label>
+      <label class="opt"><input type="radio" name="rapid-lang" value="en"> en (solo caratteri inglesi)</label>
+    </fieldset>
+    <div class="actions">
+      <button class="btn secondary" id="run-rapid">Esegui RapidOCR</button>
+    </div>
+    <p class="hint">
+      Nessun pacchetto JS ufficiale: qui gira detection scritta a mano (soglia + bounding box assiali, niente rotazione) sopra i pesi ONNX di PP-OCRv4 + onnxruntime-web. Prima esecuzione lenta (scarica ~15-20MB tra detection e recognition). Se la console mostra errori di versione onnxruntime-web o di mismatch degli output, è il primo posto da controllare.
+    </p>
+  </section>
+  <section>
+    <h2>5. Risultati</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Motore</th>
+          <th>Configurazione</th>
+          <th>Stato</th>
+          <th>Caricamento</th>
+          <th>Inferenza</th>
+          <th>Totale</th>
+          <th>Testo estratto</th>
+        </tr>
+      </thead>
+      <tbody id="results-body">
+        <tr class="empty-row"><td colspan="7">Nessun test eseguito ancora.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<script type="module">
+  // ---------- stato immagine ----------
+  let currentFile = null;
+  let currentDataUrl = null;
+
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const previewWrap = document.getElementById('preview-wrap');
+  const preview = document.getElementById('preview');
+  const fileMeta = document.getElementById('file-meta');
+  const resultsBody = document.getElementById('results-body');
+
+  function setFile(file) {
+    if (!file) return;
+    currentFile = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      currentDataUrl = reader.result;
+      preview.src = currentDataUrl;
+      previewWrap.classList.add('show');
+      fileMeta.textContent = `${file.name} — ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => setFile(e.target.files[0]));
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag');
+    setFile(e.dataTransfer.files[0]);
+  });
+
+  // ---------- tabella risultati ----------
+  function clearEmptyRow() {
+    const empty = resultsBody.querySelector('.empty-row');
+    if (empty) empty.remove();
+  }
+
+  function addRow(engine, config) {
+    clearEmptyRow();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${engine}</td>
+      <td class="mono">${config}</td>
+      <td class="status-run">in corso…</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td class="text-cell">—</td>
+    `;
+    resultsBody.appendChild(tr);
+    return tr;
+  }
+
+  // Inserisce spazi mancanti quando parole/numeri restano incollati (es. RapidOCR che fonde
+  // due box vicini): tra cifra e lettera, tra lettera e cifra, tra minuscola e maiuscola.
+  // È una pulizia euristica, non perfetta, ma indipendente dalla qualità della detection —
+  // utile comunque come primo passo prima del tuo script di catalogazione per genere/data/luogo.
+  function normalizeOcrText(text) {
+    if (!text) return text;
+    return text
+      .split('\n')
+      .map(line => line
+        .replace(/(\d)([A-ZÀ-Ýa-zà-ÿ])/g, '$1 $2')
+        .replace(/([A-ZÀ-Ýa-zà-ÿ])(\d)/g, '$1 $2')
+        .replace(/([a-zà-ÿ])([A-ZÀ-Ý])/g, '$1 $2')
+        .replace(/[ \t]+/g, ' ')
+        .trim())
+      .join('\n');
+  }
+
+  function fillRow(tr, { ok, loadMs, inferMs, totalMs, text, error }) {
+    const cells = tr.querySelectorAll('td');
+    if (ok) {
+      cells[2].textContent = 'ok';
+      cells[2].className = 'status-ok';
+      cells[3].textContent = loadMs != null ? `${loadMs} ms` : '—';
+      cells[4].textContent = inferMs != null ? `${inferMs} ms` : '—';
+      cells[5].textContent = totalMs != null ? `${totalMs} ms` : '—';
+      cells[6].textContent = normalizeOcrText(text) || '(vuoto)';
+    } else {
+      cells[2].textContent = 'errore';
+      cells[2].className = 'status-err';
+      cells[6].textContent = error || 'errore sconosciuto';
+    }
+  }
+
+  // ---------- galleria da GitHub ----------
+  const GH = {
+    OWNER: 'Bisiako',
+    REPO: 'fvg4all',
+    BRANCH: 'main',
+    IMAGE_ROOT: 'images',
+    API_URL: 'https://api.github.com',
+  };
+  GH.PAGES_BASE = `https://${GH.OWNER.toLowerCase()}.github.io/${GH.REPO}/`;
+  const IMG_EXT = /\.(jpe?g|png|webp|gif|avif)$/i;
+
+  const ghFolder = document.getElementById('gh-folder');
+  const ghLoad = document.getElementById('gh-load');
+  const ghStatus = document.getElementById('gh-status');
+  const ghGrid = document.getElementById('gh-grid');
+
+  function setGhStatus(msg, isErr = false) {
+    ghStatus.textContent = msg;
+    ghStatus.className = isErr ? 'err' : '';
+  }
+
+  const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
+
+  async function listGithubImages(folder) {
+    const path = folder.trim().replace(/^\/+|\/+$/g, '');
+    const url = `${GH.API_URL}/repos/${GH.OWNER}/${GH.REPO}/contents/${encodePath(path)}?ref=${encodeURIComponent(GH.BRANCH)}`;
+    const res = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
+    if (res.status === 404) throw new Error(`Cartella "${path}" non trovata nel branch ${GH.BRANCH}.`);
+    if (res.status === 403) throw new Error('Limite dell\'API GitHub raggiunto (60 richieste/ora senza token): riprova più tardi.');
+    if (!res.ok) throw new Error(`API GitHub: HTTP ${res.status}`);
+    const items = await res.json();
+    if (!Array.isArray(items)) throw new Error(`"${path}" non è una cartella.`);
+    return items
+      .filter((it) => it.type === 'file' && IMG_EXT.test(it.name))
+      .map((it) => ({
+        name: it.name,
+        size: it.size,
+        pagesUrl: GH.PAGES_BASE + encodePath(it.path),
+        rawUrl: it.download_url,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'it', { numeric: true }));
+  }
+
+  async function fetchBlobWithFallback(urls) {
+    let lastErr;
+    for (const u of urls) {
+      try {
+        const res = await fetch(u);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.blob();
+      } catch (err) { lastErr = err; }
+    }
+    throw lastErr;
+  }
+
+  async function selectGithubImage(item, figure) {
+    setGhStatus(`Carico ${item.name}…`);
+    try {
+      const blob = await fetchBlobWithFallback([item.pagesUrl, item.rawUrl]);
+      setFile(new File([blob], item.name, { type: blob.type || 'image/jpeg' }));
+      ghGrid.querySelectorAll('.gh-item.selected').forEach((el) => el.classList.remove('selected'));
+      figure.classList.add('selected');
+      setGhStatus(`Selezionata: ${item.name}`);
+    } catch (err) {
+      setGhStatus(`Impossibile caricare ${item.name}: ${err.message}`, true);
+    }
+  }
+
+  async function loadGithubGallery() {
+    ghLoad.disabled = true;
+    ghGrid.textContent = '';
+    setGhStatus('Leggo l\'elenco da GitHub…');
+    try {
+      const images = await listGithubImages(ghFolder.value);
+      if (!images.length) { setGhStatus('Nessuna immagine trovata in questa cartella.', true); return; }
+      for (const item of images) {
+        const fig = document.createElement('figure');
+        fig.className = 'gh-item';
+        fig.title = `${item.name} — ${(item.size / 1024 / 1024).toFixed(2)} MB`;
+
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.alt = item.name;
+        img.src = item.pagesUrl;
+        // se la versione su Pages non è (ancora) pubblicata, ripiega sul raw di GitHub
+        img.onerror = () => { img.onerror = null; img.src = item.rawUrl; };
+
+        const cap = document.createElement('figcaption');
+        cap.textContent = item.name;
+
+        fig.append(img, cap);
+        fig.addEventListener('click', () => selectGithubImage(item, fig));
+        ghGrid.appendChild(fig);
+      }
+      setGhStatus(`${images.length} immagini in ${ghFolder.value.trim()}`);
+    } catch (err) {
+      setGhStatus(err.message, true);
+    } finally {
+      ghLoad.disabled = false;
+    }
+  }
+
+  ghLoad.addEventListener('click', loadGithubGallery);
+  ghFolder.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadGithubGallery(); });
+  loadGithubGallery(); // carica subito images/settembre all'apertura della pagina
+
+  // ---------- worker TrOCR ----------
+  let worker = null;
+  let reqId = 0;
+  const pending = new Map();
+
+  function getWorker() {
+    if (!worker) {
+      worker = new Worker('worker.js', { type: 'module' });
+      worker.onmessage = (e) => {
+        const { id } = e.data;
+        const handler = pending.get(id);
+        if (handler) {
+          handler(e.data);
+          pending.delete(id);
+        }
+      };
+    }
+    return worker;
+  }
+
+  function callWorker(payload) {
+    return new Promise((resolve) => {
+      const id = ++reqId;
+      pending.set(id, resolve);
+      getWorker().postMessage({ id, ...payload });
+    });
+  }
+
+  document.getElementById('run-trocr').addEventListener('click', async () => {
+    if (!currentDataUrl) { alert('Carica prima un\'immagine.'); return; }
+    const models = [...document.querySelectorAll('.trocr-model:checked')].map(el => el.value);
+    const dtypes = [...document.querySelectorAll('.trocr-dtype:checked')].map(el => el.value);
+    const devices = [...document.querySelectorAll('.trocr-device:checked')].map(el => el.value);
+    if (!models.length || !dtypes.length || !devices.length) {
+      alert('Seleziona almeno un modello, un dtype e un device.');
+      return;
+    }
+    const btn = document.getElementById('run-trocr');
+    btn.disabled = true;
+
+    for (const modelId of models) {
+      for (const dtype of dtypes) {
+        for (const device of devices) {
+          const shortModel = modelId.split('/')[1];
+          const config = `${shortModel} · dtype=${dtype} · device=${device}`;
+          const tr = addRow('TrOCR', config);
+          const result = await callWorker({ engine: 'trocr', imageDataUrl: currentDataUrl, modelId, dtype, device });
+          fillRow(tr, result);
+        }
+      }
+    }
+    btn.disabled = false;
+  });
+
+  // ---------- RapidOCR ----------
+  document.getElementById('run-rapid').addEventListener('click', async () => {
+    if (!currentDataUrl) { alert('Carica prima un\'immagine.'); return; }
+    const lang = document.querySelector('input[name="rapid-lang"]:checked').value;
+    const btn = document.getElementById('run-rapid');
+    btn.disabled = true;
+
+    const config = `PP-OCRv4 det + rec ${lang} · device=wasm`;
+    const tr = addRow('RapidOCR', config);
+    const result = await callWorker({ engine: 'rapidocr', imageDataUrl: currentDataUrl, lang });
+    fillRow(tr, result);
+
+    btn.disabled = false;
+  });
+
+  document.getElementById('run-florence').addEventListener('click', async () => {
+    if (!currentDataUrl) { alert('Carica prima un\'immagine.'); return; }
+    const dtypes = [...document.querySelectorAll('.florence-dtype:checked')].map(el => el.value);
+    const task = document.querySelector('input[name="florence-task"]:checked').value;
+    if (!dtypes.length) { alert('Seleziona almeno un dtype.'); return; }
+
+    const btn = document.getElementById('run-florence');
+    btn.disabled = true;
+
+    const modelId = 'onnx-community/Florence-2-base';
+    for (const dtype of dtypes) {
+      const config = `Florence-2-base · dtype=${dtype} · device=wasm · ${task}`;
+      const tr = addRow('Florence-2', config);
+      const result = await callWorker({
+        engine: 'florence',
+        imageDataUrl: currentDataUrl,
+        modelId,
+        dtype,
+        device: 'wasm',
+        task,
+      });
+      fillRow(tr, result);
+    }
+    btn.disabled = false;
+  });
+</script>
+
+</body>
+</html>
